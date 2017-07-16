@@ -61,7 +61,7 @@ for i in range(10):
         sess.run(tf.initialize_all_variables())
         # writer = tf.train.SummaryWriter("logs/", graph=tf.get_default_graph())
 
-        for step in range(1000):
+        for step in range(100):
             feed_dict={x: x_, y_:expect } # feed the net with our inputs and desired outputs.
             e,a, summary=sess.run([cross_entropy, train_step, merged],feed_dict)
             # if e<1:break # early stopping yay
