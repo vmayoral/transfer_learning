@@ -12,7 +12,7 @@ expect=[[1,0],  [0,1],  [0,1], [1,0]] # ONE HOT REPRESENTATION! 'class' [1,0]==0
 # --------------
 
 # run_number = 9 # does bad
-run_number = 6 # does good
+run_number = 8 # does good
 sess = tf.Session()
 
 #First let's load meta graph and restore weights
