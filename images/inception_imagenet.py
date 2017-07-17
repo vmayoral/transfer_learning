@@ -131,8 +131,6 @@ def run_inference_on_image(image):
     tf.logging.fatal('File does not exist %s', image)
   image_data = tf.gfile.FastGFile(image, 'rb').read()
 
-  # saver = tf.train.Saver()
-  
   # Creates graph from saved GraphDef.
   create_graph()
 
@@ -145,12 +143,11 @@ def run_inference_on_image(image):
     # 'DecodeJpeg/contents:0': A tensor containing a string providing JPEG
     #   encoding of the image.
     # Runs the softmax tensor by feeding the image_data as input to the graph.
+    writer = tf.summary.FileWriter('logs/', sess.graph)
     softmax_tensor = sess.graph.get_tensor_by_name('softmax:0')
     predictions = sess.run(softmax_tensor,
                            {'DecodeJpeg/contents:0': image_data})
     predictions = np.squeeze(predictions)
-
-    # saver.save(sess, "checkpoints/"+str(i)+"/xor.ckpt") # save data
 
     # Creates node ID --> English string lookup.
     node_lookup = NodeLookup()
