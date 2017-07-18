@@ -3,6 +3,7 @@
 A simple neural network learning the XOR function
 """
 import tensorflow as tf
+import os
 
 # Desired input output mapping of XOR function:
 x_ = [[0, 0], [0, 1], [1, 0], [1, 1]] # input
@@ -58,7 +59,7 @@ saver = tf.train.Saver()
 for i in range(10):
     with tf.Session() as sess:
         writer = tf.summary.FileWriter('logs/'+str(i)+'/', sess.graph)
-        sess.run(tf.initialize_all_variables())
+        sess.run(tf.global_variables_initializer())
         # writer = tf.train.SummaryWriter("logs/", graph=tf.get_default_graph())
 
         for step in range(100):
@@ -68,6 +69,10 @@ for i in range(10):
             # print("step %d : entropy %s" % (step,e)) # error/loss should decrease over time
             # write log
             writer.add_summary(summary, step)
+
+        directory = "checkpoints/"+str(i)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
 
         saver.save(sess, "checkpoints/"+str(i)+"/xor.ckpt") # save data
 
