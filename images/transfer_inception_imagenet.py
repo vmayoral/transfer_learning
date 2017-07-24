@@ -53,12 +53,17 @@ with tf.Session() as sess:
     # fetch tensors from the graph
     softmax_tensor = sess.graph.get_tensor_by_name('softmax:0')
     conv = sess.graph.get_tensor_by_name('conv:0')
+
     print(softmax_tensor)
     print(conv)
-
-    # Instead of running the prediction, we will add layers here
 
     # # Runs the softmax tensor by feeding the image_data as input to the graph.
     # predictions = sess.run(softmax_tensor,
     #                        {'DecodeJpeg/contents:0': image_data})
     # predictions = np.squeeze(predictions)
+
+    # Instead of running the prediction, we will add layers here starting from the
+    # the "conv" layer which outputs a Tensor of the type:
+    #    Tensor("conv:0", shape=(1, 149, 149, 32), dtype=float32)
+    # Code that defines the network is available at
+    # https://github.com/tensorflow/models/blob/master/inception/inception/slim/inception_model.py#L85-L107
