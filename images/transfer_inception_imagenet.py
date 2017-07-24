@@ -6,6 +6,7 @@ import tensorflow as tf
 import os
 import sys
 import tarfile
+import urllib.request
 
 # FLAGS = None
 model_dir = "/tmp/imagenet"
@@ -54,6 +55,8 @@ with tf.Session() as sess:
     conv = sess.graph.get_tensor_by_name('conv:0')
     print(softmax_tensor)
     print(conv)
+
+    # Instead of running the prediction, we will add layers here
 
     # # Runs the softmax tensor by feeding the image_data as input to the graph.
     # predictions = sess.run(softmax_tensor,
