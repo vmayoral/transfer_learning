@@ -40,6 +40,42 @@ def create_graph():
     graph_def.ParseFromString(f.read())
     _ = tf.import_graph_def(graph_def, name='')
 
+def conv2d(img, w, b, name, strides=[1, 1, 1, 1]):
+    return tf.nn.relu(tf.nn.bias_add(tf.nn.conv2d(img, w, strides=strides, padding='SAME', name=name), b))
+
+def build_gps_graph():
+    """ Builds the NN graph to be used for GPS"""
+    nn_input = tf.placeholder(tf.float32, shape=[None, 299*299*3], name='input')
+    #nn_input = tf.placeholder(tf.float32, shape=[None, 240*240*3], name='input')
+    #y_true = tf.placeholder(tf.float32, [None, dim_output], name='y_true')
+    #y_true_cls = tf.argmax(y_true, dimension=1)
+
+    # image goes through 3 convnet layers
+    num_filters = [64, 32, 32]
+
+    # Store layers weight & bias
+    with tf.variable_scope('conv_params'):
+        weights = {
+            'wc1': tf.get_variable("wc1", initializer=tf.random_normal([5, 5, 3, num_filters[0]], stddev=0.01)),
+            'wc2': tf.get_variable("wc2", initializer=tf.random_normal([5, 5, num_filters[0], num_filters[1]], stddev=0.01)),
+            'wc3': tf.get_variable("wc3", initializer=tf.random_normal([5, 5, num_filters[1], num_filters[2]], stddev=0.01)),
+        }
+        biases = {
+            'bc1': tf.get_variable("bc1", initializer=tf.zeros([num_filters[0]], dtype='float')),
+            'bc2': tf.get_variable("bc2", initializer=tf.zeros([num_filters[1]], dtype='float')),
+            'bc3': tf.get_variable("bc3", initializer=tf.zeros([num_filters[2]], dtype='float')),
+        }
+
+    image_input = tf.reshape(nn_input, [-1, 3, 299, 299])
+    image_input = tf.transpose(image_input, perm=[0,3,2,1])
+    conv_layer_1 = conv2d(img=image_input, w=weights['wc1'], b=biases['bc1'], name="conv1", strides=[1,2,2,1])
+    conv_layer_2 = conv2d(img=conv_layer_1, w=weights['wc2'], b=biases['bc2'], name="conv2")
+    conv_layer_3 = conv2d(img=conv_layer_2, w=weights['wc3'], b=biases['bc3'], name="conv3")
+
+    print(image_input)
+    print(conv_layer_1)
+
+
 # Fetch the model to use for transferring the knowledge
 fetch_inception_model()
 
@@ -67,3 +103,5 @@ with tf.Session() as sess:
     #    Tensor("conv:0", shape=(1, 149, 149, 32), dtype=float32)
     # Code that defines the network is available at
     # https://github.com/tensorflow/models/blob/master/inception/inception/slim/inception_model.py#L85-L107
+    # from here one can tell that the in put is of the kind 299 x 299 x 3 (while the output 147 x 147 x 32)
+    build_gps_graph()
