@@ -1,6 +1,7 @@
 """
 This scripts uses the Inception model trained on ImageNet 2012 Challenge data
 set and transfers it to a network used for Global Policy Search (GPS).
+http://arxiv.org/abs/1512.00567
 """
 import tensorflow as tf
 import os
@@ -13,7 +14,9 @@ model_dir = "/tmp/imagenet"
 DATA_URL = 'http://download.tensorflow.org/models/image/imagenet/inception-2015-12-05.tgz'
 
 def fetch_inception_model():
-  """Download and extract model tar file trained on ImageNet."""
+  """
+  Download and extract model tar file trained on ImageNet.
+  """
   dest_directory = model_dir
   print("destiny directory: "+str(dest_directory))
   if not os.path.exists(dest_directory):
@@ -32,7 +35,9 @@ def fetch_inception_model():
   tarfile.open(filepath, 'r:gz').extractall(dest_directory)
 
 def create_graph():
-  """Creates a graph from saved GraphDef file and returns a saver."""
+  """
+  Creates a graph from saved GraphDef file and returns a saver.
+  """
   # Creates graph from saved graph_def.pb.
   with tf.gfile.FastGFile(os.path.join(
       model_dir, 'classify_image_graph_def.pb'), 'rb') as f:
@@ -41,30 +46,19 @@ def create_graph():
     _ = tf.import_graph_def(graph_def, name='')
 
 def conv2d(img, w, b, name, strides=[1, 1, 1, 1]):
+    """
+    Auxiliary function to define CNN layers
+    """
     return tf.nn.relu(tf.nn.bias_add(tf.nn.conv2d(img, w, strides=strides, padding='SAME', name=name), b))
 
 def build_gps_graph():
-    """ Builds the NN graph to be used for GPS"""
+    """
+     Builds the NN graph to be used for GPS
+     """
     nn_input = tf.placeholder(tf.float32, shape=[None, 299*299*3], name='input')
     #nn_input = tf.placeholder(tf.float32, shape=[None, 240*240*3], name='input')
     #y_true = tf.placeholder(tf.float32, [None, dim_output], name='y_true')
     #y_true_cls = tf.argmax(y_true, dimension=1)
-
-    # image goes through 3 convnet layers
-    num_filters = [64, 32, 32]
-
-    # Store layers weight & bias
-    with tf.variable_scope('conv_params'):
-        weights = {
-            'wc1': tf.get_variable("wc1", initializer=tf.random_normal([5, 5, 3, num_filters[0]], stddev=0.01)),
-            'wc2': tf.get_variable("wc2", initializer=tf.random_normal([5, 5, num_filters[0], num_filters[1]], stddev=0.01)),
-            'wc3': tf.get_variable("wc3", initializer=tf.random_normal([5, 5, num_filters[1], num_filters[2]], stddev=0.01)),
-        }
-        biases = {
-            'bc1': tf.get_variable("bc1", initializer=tf.zeros([num_filters[0]], dtype='float')),
-            'bc2': tf.get_variable("bc2", initializer=tf.zeros([num_filters[1]], dtype='float')),
-            'bc3': tf.get_variable("bc3", initializer=tf.zeros([num_filters[2]], dtype='float')),
-        }
 
     image_input = tf.reshape(nn_input, [-1, 3, 299, 299])
     image_input = tf.transpose(image_input, perm=[0,3,2,1])
@@ -72,9 +66,24 @@ def build_gps_graph():
     conv_layer_2 = conv2d(img=conv_layer_1, w=weights['wc2'], b=biases['bc2'], name="conv2")
     conv_layer_3 = conv2d(img=conv_layer_2, w=weights['wc3'], b=biases['bc3'], name="conv3")
 
-    print(image_input)
-    print(conv_layer_1)
+    # print(image_input)
+    # print(conv_layer_1)
 
+
+# Variables for the overall default GPS CNN
+num_filters = [64, 32, 32]
+# Store layers weight & bias
+with tf.variable_scope('conv_params'):
+    weights = {
+        'wc1': tf.get_variable("wc1", initializer=tf.random_normal([5, 5, 3, num_filters[0]], stddev=0.01)),
+        'wc2': tf.get_variable("wc2", initializer=tf.random_normal([5, 5, num_filters[0], num_filters[1]], stddev=0.01)),
+        'wc3': tf.get_variable("wc3", initializer=tf.random_normal([5, 5, num_filters[1], num_filters[2]], stddev=0.01)),
+    }
+    biases = {
+        'bc1': tf.get_variable("bc1", initializer=tf.zeros([num_filters[0]], dtype='float')),
+        'bc2': tf.get_variable("bc2", initializer=tf.zeros([num_filters[1]], dtype='float')),
+        'bc3': tf.get_variable("bc3", initializer=tf.zeros([num_filters[2]], dtype='float')),
+    }
 
 # Fetch the model to use for transferring the knowledge
 fetch_inception_model()
@@ -86,12 +95,17 @@ with tf.Session() as sess:
     # Just log everything to debug stuff in tensorboard
     writer = tf.summary.FileWriter('logs/', sess.graph)
 
-    # fetch tensors from the graph
+    # fetch tensors from the "inception" graph
     softmax_tensor = sess.graph.get_tensor_by_name('softmax:0')
+    image_in = sess.graph.get_tensor_by_name('DecodeJpeg/contents:0')
     conv = sess.graph.get_tensor_by_name('conv:0')
 
-    print(softmax_tensor)
+    # print(softmax_tensor)
+    print(image_in)
     print(conv)
+
+    # Debug initial GPS network
+    # build_gps_graph()
 
     # # Runs the softmax tensor by feeding the image_data as input to the graph.
     # predictions = sess.run(softmax_tensor,
@@ -104,4 +118,10 @@ with tf.Session() as sess:
     # Code that defines the network is available at
     # https://github.com/tensorflow/models/blob/master/inception/inception/slim/inception_model.py#L85-L107
     # from here one can tell that the in put is of the kind 299 x 299 x 3 (while the output 147 x 147 x 32)
-    build_gps_graph()
+    # this is connected to the second CNN layer in the GPS model.
+
+    conv2 = tf.nn.relu(tf.nn.bias_add(tf.nn.conv2d(conv, weights['wc2'], strides=[1, 1, 1, 1], padding='SAME'), biases['bc2']), name="conv2")
+    conv3 = tf.nn.relu(tf.nn.bias_add(tf.nn.conv2d(conv2, weights['wc3'], strides=[1, 1, 1, 1], padding='SAME'), biases['bc3']), name="conv3")
+
+    print(conv2)
+    print(conv3)
